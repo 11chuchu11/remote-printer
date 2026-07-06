@@ -9,6 +9,16 @@ avahi-daemon --daemonize --no-drop-root
 # Listen on all interfaces, not just localhost
 sed -i 's/Listen localhost:631/Listen *:631/' /etc/cups/cupsd.conf
 
+# Allow unauthenticated access to printer queues from local network
+cat >> /etc/cups/cupsd.conf << 'EOF'
+
+<Location /printers>
+  AuthType None
+  Order allow,deny
+  Allow @LOCAL
+</Location>
+EOF
+
 cupsd
 
 sleep 3
