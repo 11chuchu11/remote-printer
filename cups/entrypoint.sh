@@ -9,7 +9,9 @@ avahi-daemon --daemonize --no-drop-root
 # Listen on all interfaces, not just localhost
 sed -i 's/Listen localhost:631/Listen *:631/' /etc/cups/cupsd.conf
 
-# Allow unauthenticated access to printer queues from local network
+# Remove existing /printers location block (may be localhost-only) and replace it
+awk '/<Location \/printers>/,/<\/Location>/{next} {print}' /etc/cups/cupsd.conf > /tmp/cupsd.conf.tmp \
+  && mv /tmp/cupsd.conf.tmp /etc/cups/cupsd.conf
 cat >> /etc/cups/cupsd.conf << 'EOF'
 
 <Location /printers>
