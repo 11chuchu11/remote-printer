@@ -16,9 +16,12 @@ services:
     network_mode: host
     env_file:
       - .env
+    volumes:
+      - bot_data:/data
     depends_on:
       - cups
     restart: unless-stopped
 
 volumes:
   cups_config:
+  bot_data:

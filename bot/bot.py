@@ -1,45 +1,27 @@
-import os
 import logging
-import subprocess
-from telegram import Update
-from telegram.ext import Application, MessageHandler, ContextTypes, filters
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from config import TOKEN
+from storage import init_db
+from handlers.print import handle_document
+from handlers.queue import handle_status, handle_cancel, handle_queue, handle_history
+from handlers.config import handle_config
 
 logging.basicConfig(level=logging.INFO)
 
-TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-ALLOWED_IDS = [int(x) for x in os.environ["ALLOWED_USER_IDS"].split(",")]
-PRINTER = os.environ.get("CUPS_PRINTER", "DCPT300")
-ALLOWED_EXT = (".pdf", ".jpg", ".jpeg", ".png", ".txt")
-
-async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    if user_id not in ALLOWED_IDS:
-        await update.message.reply_text("No autorizado.")
-        logging.warning(f"Intento de acceso no autorizado: {user_id}")
-        return
-
-    doc = update.message.document
-    filename = doc.file_name or "archivo"
-    if not filename.lower().endswith(ALLOWED_EXT):
-        await update.message.reply_text("Solo acepto PDF, JPG, PNG o TXT.")
-        return
-
-    file = await doc.get_file()
-    local_path = f"/tmp/{filename}"
-    await file.download_to_drive(local_path)
-
-    try:
-        subprocess.run(["lp", "-d", PRINTER, local_path], check=True, timeout=30)
-        await update.message.reply_text(f"Imprimiendo: {filename}")
-    except Exception as e:
-        await update.message.reply_text(f"Error al imprimir: {e}")
-    finally:
-        os.remove(local_path)
 
 def main():
+    init_db()
     app = Application.builder().token(TOKEN).build()
+
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+    app.add_handler(CommandHandler("status", handle_status))
+    app.add_handler(CommandHandler("cancel", handle_cancel))
+    app.add_handler(CommandHandler("queue", handle_queue))
+    app.add_handler(CommandHandler("history", handle_history))
+    app.add_handler(CommandHandler("config", handle_config))
+
     app.run_polling()
+
 
 if __name__ == "__main__":
     main()
