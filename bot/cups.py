@@ -12,6 +12,13 @@ def print_file(printer: str, path: str, config: dict | None = None) -> None:
         opts += ["-o", f"sides={cfg['sides']}"]
     if cfg.get("color") == "gray":
         opts += ["-o", "ColorModel=Gray"]
+    pages = cfg.get("pages", "all")
+    if pages == "odd":
+        opts += ["-o", "page-set=odd"]
+    elif pages == "even":
+        opts += ["-o", "page-set=even"]
+    elif pages not in ("all", "", None):
+        opts += ["-o", f"page-ranges={pages}"]
     subprocess.run(["lp", "-d", printer, *opts, path], check=True, timeout=30)
 
 

@@ -6,6 +6,9 @@ dbus-daemon --system --fork
 
 avahi-daemon --daemonize --no-drop-root
 
+# Listen on all interfaces, not just localhost
+sed -i 's/Listen localhost:631/Listen *:631/' /etc/cups/cupsd.conf
+
 cupsd
 
 sleep 3

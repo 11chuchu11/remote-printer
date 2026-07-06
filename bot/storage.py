@@ -95,7 +95,7 @@ def get_history(user_id: int, limit: int = 10) -> list[dict]:
     with _conn() as conn:
         rows = conn.execute(
             "SELECT filename, printed_at, status, file_path FROM history"
-            " WHERE user_id = ? ORDER BY printed_at DESC LIMIT ?",
+            " WHERE user_id = ? ORDER BY id DESC LIMIT ?",
             (user_id, limit),
         ).fetchall()
     return [{"filename": r[0], "printed_at": r[1], "status": r[2], "file_path": r[3]} for r in rows]

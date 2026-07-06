@@ -1,12 +1,14 @@
 import os
-import shutil
+import re
 import logging
 from telegram import Update
 from telegram.ext import ContextTypes
-from config import PRINTER, ALLOWED_EXT, FILES_DIR, PERSIST_FILES, is_allowed
-from cups import print_file
-from storage import log_print, log_event, get_print_config
+from config import PRINTER, ALLOWED_EXT, is_allowed, get_user_name
+from storage import log_event, get_print_config
 from handlers.common import reply_unauthorized
+from handlers.keyboards import job_keyboard, job_text
+
+_PAGE_RANGE_RE = re.compile(r'^\d+(-\d+)?(,\d+(-\d+)?)*$')
 
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -28,29 +30,31 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     log_event("INFO", "file_received", user_id, filename)
 
+    # cancel previous pending job if any
+    prev = context.user_data.get("pending")
+    if prev:
+        path = prev.get("path")
+        if path and os.path.exists(path):
+            os.remove(path)
+
     file = await doc.get_file()
-    local_path = f"/tmp/{filename}"
+    local_path = f"/tmp/{user_id}_{filename}"
     await file.download_to_drive(local_path)
 
-    stored_path = None
-    if PERSIST_FILES:
-        dest_dir = os.path.join(FILES_DIR, str(user_id))
-        os.makedirs(dest_dir, exist_ok=True)
-        stored_path = os.path.join(dest_dir, filename)
-        # avoid overwriting — prefix with timestamp if exists
-        if os.path.exists(stored_path):
-            from datetime import datetime
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            stored_path = os.path.join(dest_dir, f"{ts}_{filename}")
-        shutil.copy2(local_path, stored_path)
-        log_event("INFO", "file_stored", user_id, stored_path)
+    cfg = get_print_config(user_id)
+    caption = (update.message.caption or "").strip()
+    cfg["pages"] = caption if _PAGE_RANGE_RE.match(caption) else "all"
 
-    try:
-        print_file(PRINTER, local_path, get_print_config(user_id))
-        log_print(user_id, filename, "ok", stored_path)
-        await update.message.reply_text(f"Imprimiendo: {filename}")
-    except Exception as e:
-        log_print(user_id, filename, "error", stored_path)
-        await update.message.reply_text(f"Error al imprimir: {e}")
-    finally:
-        os.remove(local_path)
+    name = get_user_name(user_id)
+    context.user_data["pending"] = {
+        "path": local_path,
+        "filename": filename,
+        "config": cfg,
+        "name": name,
+    }
+
+    await update.message.reply_text(
+        job_text(filename, cfg, name),
+        reply_markup=job_keyboard(cfg),
+        parse_mode="HTML",
+    )

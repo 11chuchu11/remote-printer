@@ -8,9 +8,10 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-current=$(grep "^ALLOWED_USER_IDS=" "$ENV_FILE" | cut -d= -f2)
+current_ids=$(grep "^ALLOWED_USER_IDS=" "$ENV_FILE" | cut -d= -f2)
+current_names=$(grep "^USER_NAMES=" "$ENV_FILE" | cut -d= -f2)
 
-echo "Usuarios actuales: ${current:-"(ninguno)"}"
+echo "Usuarios actuales: ${current_ids:-"(ninguno)"}"
 read -rp "ID a eliminar: " id
 
 if ! [[ "$id" =~ ^[0-9]+$ ]]; then
@@ -18,18 +19,19 @@ if ! [[ "$id" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
-if [[ ",$current," != *",$id,"* ]]; then
+if [[ ",$current_ids," != *",$id,"* ]]; then
     echo "Usuario $id no encontrado."
     exit 1
 fi
 
-new=$(echo "$current" | tr ',' '\n' | grep -v "^${id}$" | paste -sd ',')
+new_ids=$(echo "$current_ids" | tr ',' '\n' | grep -v "^${id}$" | paste -sd ',')
+new_names=$(echo "$current_names" | tr ',' '\n' | grep -v "^${id}:" | paste -sd ',')
 
 tmp=$(mktemp)
-grep -v "^ALLOWED_USER_IDS=" "$ENV_FILE" > "$tmp"
-echo "ALLOWED_USER_IDS=$new" >> "$tmp"
+grep -v "^ALLOWED_USER_IDS=" "$ENV_FILE" | grep -v "^USER_NAMES=" > "$tmp"
+echo "ALLOWED_USER_IDS=$new_ids" >> "$tmp"
+[ -n "$new_names" ] && echo "USER_NAMES=$new_names" >> "$tmp"
 mv "$tmp" "$ENV_FILE"
 
 echo "Removido: $id"
-echo "Usuarios restantes: ${new:-"(ninguno)"}"
 echo "Aplicar: docker compose restart print-bot"
