@@ -1,0 +1,24 @@
+services:
+  cups:
+    build: ./cups
+    container_name: cups
+    network_mode: host
+    privileged: true
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    volumes:
+      - cups_config:/etc/cups
+    restart: unless-stopped
+
+  print-bot:
+    build: ./bot
+    container_name: print-bot
+    network_mode: host
+    env_file:
+      - .env
+    depends_on:
+      - cups
+    restart: unless-stopped
+
+volumes:
+  cups_config:
