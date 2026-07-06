@@ -2,6 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from config import is_allowed
 from storage import get_print_config, set_print_config, log_event, PRINT_CONFIG_OPTIONS
+from handlers.common import reply_unauthorized
 
 SIDES_ALIAS = {
     "duplex":      "two-sided-long-edge",
@@ -24,7 +25,7 @@ HELP = (
 async def handle_config(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if not is_allowed(user_id):
-        await update.message.reply_text("No autorizado.")
+        await reply_unauthorized(update)
         return
 
     if not context.args:

@@ -3,11 +3,12 @@ from telegram.ext import ContextTypes
 from config import PRINTER, is_allowed
 from cups import get_status, get_ink, get_queue, cancel_job, cancel_all
 from storage import get_history, log_event
+from handlers.common import reply_unauthorized
 
 
 async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed(update.effective_user.id):
-        await update.message.reply_text("No autorizado.")
+        await reply_unauthorized(update)
         return
 
     status = get_status(PRINTER)
@@ -22,7 +23,7 @@ async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed(update.effective_user.id):
-        await update.message.reply_text("No autorizado.")
+        await reply_unauthorized(update)
         return
 
     jobs = get_queue(PRINTER)
@@ -36,7 +37,7 @@ async def handle_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed(update.effective_user.id):
-        await update.message.reply_text("No autorizado.")
+        await reply_unauthorized(update)
         return
 
     user_id = update.effective_user.id
@@ -60,7 +61,7 @@ async def handle_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed(update.effective_user.id):
-        await update.message.reply_text("No autorizado.")
+        await reply_unauthorized(update)
         return
 
     rows = get_history(update.effective_user.id)

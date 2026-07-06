@@ -6,6 +6,7 @@ from telegram.ext import ContextTypes
 from config import PRINTER, ALLOWED_EXT, FILES_DIR, PERSIST_FILES, is_allowed
 from cups import print_file
 from storage import log_print, log_event, get_print_config
+from handlers.common import reply_unauthorized
 
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -13,7 +14,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not is_allowed(user_id):
         log_event("WARNING", "unauthorized", user_id)
-        await update.message.reply_text("No autorizado.")
+        await reply_unauthorized(update)
         logging.warning(f"Acceso no autorizado: {user_id}")
         return
 
