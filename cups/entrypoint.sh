@@ -6,21 +6,6 @@ dbus-daemon --system --fork
 
 avahi-daemon --daemonize --no-drop-root
 
-# Listen on all interfaces, not just localhost
-sed -i 's/Listen localhost:631/Listen *:631/' /etc/cups/cupsd.conf
-
-# Remove existing /printers location block (may be localhost-only) and replace it
-awk '/<Location \/printers>/,/<\/Location>/{next} {print}' /etc/cups/cupsd.conf > /tmp/cupsd.conf.tmp \
-  && mv /tmp/cupsd.conf.tmp /etc/cups/cupsd.conf
-cat >> /etc/cups/cupsd.conf << 'EOF'
-
-<Location /printers>
-  AuthType None
-  Order allow,deny
-  Allow @LOCAL
-</Location>
-EOF
-
 cupsd
 
 sleep 3
@@ -31,7 +16,6 @@ if ! lpstat -p DCPT300 >/dev/null 2>&1; then
     URI=$(lpinfo -v | grep -i "usb.*brother" | awk '{print $2}')
     if [ -n "$URI" ]; then
         lpadmin -p DCPT300 -E -v "$URI" -P /usr/share/cups/model/Brother/brother_dcpt300_printer_en.ppd
-        lpadmin -p DCPT300 -o printer-is-shared=true
         lpadmin -d DCPT300
         cupsenable DCPT300
         cupsaccept DCPT300
