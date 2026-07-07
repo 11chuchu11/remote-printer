@@ -260,12 +260,11 @@ class TestHelpHandlers:
         msg = update.message.reply_text.call_args[0][0]
         assert "999999999" in msg
 
-    async def test_start_authorized_shows_commands(self, make_update, make_context):
+    async def test_start_authorized_shows_menu(self, make_update, make_context):
         update = make_update(user_id=111111111)
         ctx = make_context()
-        with patch.object(help_handler, "is_allowed", return_value=True):
+        with patch.object(help_handler, "is_allowed", return_value=True), \
+             patch.object(help_handler, "get_user_name", return_value=None):
             await help_handler.handle_start(update, ctx)
-        msg = update.message.reply_text.call_args[0][0]
-        assert "/status" in msg
-        assert "/queue" in msg
-        assert "/config" in msg
+        call_kwargs = update.message.reply_text.call_args[1]
+        assert call_kwargs.get("reply_markup") is not None

@@ -1,5 +1,26 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+BACK_BTN = [[InlineKeyboardButton("🔙 Menú", callback_data="menu:back")]]
+
+
+def menu_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("📊 Estado",    callback_data="menu:status"),
+            InlineKeyboardButton("📋 Cola",      callback_data="menu:queue"),
+        ],
+        [
+            InlineKeyboardButton("📜 Historial", callback_data="menu:history"),
+            InlineKeyboardButton("⚙️ Config",    callback_data="menu:config"),
+        ],
+        [InlineKeyboardButton("❌ Cancelar todo", callback_data="menu:cancel")],
+    ])
+
+
+def menu_text(name: str | None = None) -> str:
+    greeting = f"Hola, <b>{name}</b>! " if name else ""
+    return f"{greeting}🖨️ ¿Qué hacemos?"
+
 PAGES_CYCLE = ["all", "odd", "even"]
 PAGES_LABELS = {"all": "📑 Todas", "odd": "📑 Impares", "even": "📑 Pares"}
 
@@ -53,6 +74,7 @@ def config_keyboard(cfg: dict) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(f"📄 {SIDES_LABELS.get(cfg['sides'], cfg['sides'])}", callback_data="cfg:sides")],
         [InlineKeyboardButton(f"📐 {cfg['media']}", callback_data="cfg:media")],
         [InlineKeyboardButton("✅ Listo", callback_data="cfg:done")],
+        [InlineKeyboardButton("🔙 Menú", callback_data="menu:back")],
     ])
 
 

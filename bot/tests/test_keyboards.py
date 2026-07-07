@@ -93,10 +93,10 @@ class TestConfigKeyboard:
         kb = config_keyboard(cfg)
         assert "cfg:done" in self._all_data(kb)
 
-    def test_uses_cfg_prefix(self, cfg):
+    def test_uses_cfg_or_menu_prefix(self, cfg):
         kb = config_keyboard(cfg)
         data = self._all_data(kb)
-        assert all(d.startswith("cfg:") for d in data)
+        assert all(d.startswith("cfg:") or d.startswith("menu:") for d in data)
 
 
 class TestJobText:

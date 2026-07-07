@@ -1,6 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-from config import is_allowed
+from config import is_allowed, get_user_name
+from handlers.keyboards import menu_keyboard, menu_text
 
 HELP_AUTHORIZED = (
     "<b>Comandos disponibles:</b>\n\n"
@@ -25,7 +26,12 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="HTML",
         )
         return
-    await update.message.reply_text(HELP_AUTHORIZED, parse_mode="HTML")
+    name = get_user_name(user_id)
+    await update.message.reply_text(
+        menu_text(name),
+        reply_markup=menu_keyboard(),
+        parse_mode="HTML",
+    )
 
 
 async def handle_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
