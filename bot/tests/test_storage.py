@@ -19,6 +19,13 @@ class TestInitDb:
             tables = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")]
         assert "print_config" in tables
 
+    def test_creates_ink_tracking_table_with_seed_row(self, test_db):
+        with sqlite3.connect(test_db) as conn:
+            tables = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+            row = conn.execute("SELECT black_pages, color_pages FROM ink_tracking WHERE id = 1").fetchone()
+        assert "ink_tracking" in tables
+        assert row == (0, 0)
+
     def test_idempotent(self, test_db):
         storage.init_db()  # second call should not raise
         storage.init_db()
@@ -122,3 +129,55 @@ class TestPrintConfig:
         cfg = storage.get_print_config(111111111)
         assert cfg["color"] == "gray"
         assert cfg["copies"] == 3
+
+
+class TestInkTracking:
+    def test_starts_at_zero(self, test_db):
+        est = storage.get_ink_estimate()
+        assert est["black_pages"] == 0
+        assert est["color_pages"] == 0
+        assert est["black_pct"] == 100
+        assert est["color_pct"] == 100
+
+    def test_mono_job_only_consumes_black(self, test_db):
+        storage.record_ink_usage(10, color=False)
+        est = storage.get_ink_estimate()
+        assert est["black_pages"] == 10
+        assert est["color_pages"] == 0
+
+    def test_color_job_consumes_both_tanks(self, test_db):
+        storage.record_ink_usage(10, color=True)
+        est = storage.get_ink_estimate()
+        assert est["black_pages"] == 10
+        assert est["color_pages"] == 10
+
+    def test_usage_accumulates_across_jobs(self, test_db):
+        storage.record_ink_usage(10, color=False)
+        storage.record_ink_usage(5, color=True)
+        est = storage.get_ink_estimate()
+        assert est["black_pages"] == 15
+        assert est["color_pages"] == 5
+
+    def test_pct_decreases_with_usage(self, test_db):
+        storage.record_ink_usage(storage.BLACK_YIELD_PAGES // 2, color=False)
+        est = storage.get_ink_estimate()
+        assert est["black_pct"] == 50
+
+    def test_pct_never_goes_negative(self, test_db):
+        storage.record_ink_usage(storage.BLACK_YIELD_PAGES * 2, color=True)
+        est = storage.get_ink_estimate()
+        assert est["black_pct"] == 0
+        assert est["color_pct"] == 0
+
+    def test_reset_zeroes_counters(self, test_db):
+        storage.record_ink_usage(100, color=True)
+        storage.reset_ink()
+        est = storage.get_ink_estimate()
+        assert est["black_pages"] == 0
+        assert est["color_pages"] == 0
+
+    def test_reset_updates_timestamp(self, test_db):
+        before = storage.get_ink_estimate()["reset_at"]
+        storage.reset_ink()
+        after = storage.get_ink_estimate()["reset_at"]
+        assert after >= before

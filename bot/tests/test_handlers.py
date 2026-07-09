@@ -209,11 +209,29 @@ class TestJobCallbacks:
         with patch.object(callbacks_handler, "is_allowed", return_value=True), \
              patch.object(callbacks_handler, "print_file") as mock_print, \
              patch.object(callbacks_handler, "log_print"), \
+             patch.object(callbacks_handler, "record_ink_usage"), \
              patch.object(callbacks_handler, "log_event"):
             await callbacks_handler.handle_callback(update, ctx)
         mock_print.assert_called_once()
         assert not f.exists()
         assert "pending" not in ctx.user_data
+
+    async def test_confirm_records_ink_usage(self, make_callback_query, make_context, tmp_path):
+        f = tmp_path / "doc.jpg"
+        f.write_bytes(b"data")
+        query = make_callback_query(data="pj:confirm")
+        pending = self._pending(path=str(f), cfg={**DEFAULT_CFG, "copies": 3, "color": "gray"})
+        ctx = make_context(user_data={"pending": pending})
+        update = MagicMock()
+        update.callback_query = query
+        with patch.object(callbacks_handler, "is_allowed", return_value=True), \
+             patch.object(callbacks_handler, "print_file"), \
+             patch.object(callbacks_handler, "log_print"), \
+             patch.object(callbacks_handler, "record_ink_usage") as mock_ink, \
+             patch.object(callbacks_handler, "log_event"):
+            await callbacks_handler.handle_callback(update, ctx)
+        # doc.jpg -> 1 page, "all" pages filter, 3 copies, gray -> color=False
+        mock_ink.assert_called_once_with(3, False)
 
     async def test_confirm_with_name_shows_personalized_message(self, make_callback_query, make_context, tmp_path):
         f = tmp_path / "doc.pdf"
@@ -225,6 +243,7 @@ class TestJobCallbacks:
         with patch.object(callbacks_handler, "is_allowed", return_value=True), \
              patch.object(callbacks_handler, "print_file"), \
              patch.object(callbacks_handler, "log_print"), \
+             patch.object(callbacks_handler, "record_ink_usage"), \
              patch.object(callbacks_handler, "log_event"):
             await callbacks_handler.handle_callback(update, ctx)
         msg = query.edit_message_text.call_args[0][0]
@@ -490,6 +509,37 @@ class TestQueueHandlers:
              patch.object(queue_handler, "get_queue", return_value=["DCPT300-1 alice"]):
             await queue_handler.handle_queue(update, ctx)
         assert "DCPT300-1" in update.message.reply_text.call_args[0][0]
+
+
+# ── handle_ink ────────────────────────────────────────────────────────────────
+
+class TestInkHandler:
+    async def test_unauthorized(self, make_update, make_context):
+        update = make_update(user_id=999999999)
+        ctx = make_context()
+        mock_unauth = AsyncMock()
+        with patch.object(queue_handler, "is_allowed", return_value=False), \
+             patch.object(queue_handler, "reply_unauthorized", mock_unauth):
+            await queue_handler.handle_ink(update, ctx)
+        mock_unauth.assert_called_once_with(update)
+
+    async def test_no_args_shows_estimate(self, make_update, make_context):
+        update = make_update()
+        ctx = make_context(args=[])
+        with patch.object(queue_handler, "is_allowed", return_value=True), \
+             patch.object(queue_handler, "format_ink_message", return_value="estimado"):
+            await queue_handler.handle_ink(update, ctx)
+        assert "estimado" in update.message.reply_text.call_args[0][0]
+
+    async def test_reset_resets_and_confirms(self, make_update, make_context):
+        update = make_update()
+        ctx = make_context(args=["reset"])
+        with patch.object(queue_handler, "is_allowed", return_value=True), \
+             patch.object(queue_handler, "reset_ink") as mock_reset, \
+             patch.object(queue_handler, "log_event"):
+            await queue_handler.handle_ink(update, ctx)
+        mock_reset.assert_called_once()
+        assert "reiniciado" in update.message.reply_text.call_args[0][0]
 
 
 # ── handle_history ────────────────────────────────────────────────────────────

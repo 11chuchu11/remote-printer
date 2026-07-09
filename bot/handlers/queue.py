@@ -2,8 +2,8 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from config import PRINTER, is_allowed
 from cups import get_queue, cancel_job, cancel_all
-from storage import get_history, log_event
-from handlers.common import reply_unauthorized, format_status_message
+from storage import get_history, log_event, reset_ink
+from handlers.common import reply_unauthorized, format_status_message, format_ink_message
 
 
 async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -51,6 +51,20 @@ async def handle_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"{count} trabajo(s) cancelado(s).")
         else:
             await update.message.reply_text("No había trabajos en cola.")
+
+
+async def handle_ink(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_allowed(update.effective_user.id):
+        await reply_unauthorized(update)
+        return
+
+    if context.args and context.args[0].lower() == "reset":
+        reset_ink()
+        log_event("INFO", "ink_reset", update.effective_user.id)
+        await update.message.reply_text("✅ Contador de tinta reiniciado.")
+        return
+
+    await update.message.reply_text(format_ink_message(), parse_mode="HTML")
 
 
 async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE):

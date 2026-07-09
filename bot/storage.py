@@ -38,6 +38,15 @@ def init_db() -> None:
                 color   TEXT    DEFAULT 'color'
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS ink_tracking (
+                id          INTEGER PRIMARY KEY CHECK (id = 1),
+                black_pages INTEGER DEFAULT 0,
+                color_pages INTEGER DEFAULT 0,
+                reset_at    TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("INSERT OR IGNORE INTO ink_tracking (id) VALUES (1)")
         conn.commit()
 
 
@@ -99,3 +108,48 @@ def get_history(user_id: int, limit: int = 10) -> list[dict]:
             (user_id, limit),
         ).fetchall()
     return [{"filename": r[0], "printed_at": r[1], "status": r[2], "file_path": r[3]} for r in rows]
+
+
+# Rendimiento estimado (ISO/IEC 24711) de las botellas de la Brother DCP-T300:
+# BTD60BK (negro) y BT5000 C/M/Y (color). Números de laboratorio — el consumo
+# real varía según cobertura de tinta de cada documento.
+BLACK_YIELD_PAGES = 6000
+COLOR_YIELD_PAGES = 5000
+
+
+def record_ink_usage(pages: int, color: bool) -> None:
+    with _conn() as conn:
+        if color:
+            conn.execute(
+                "UPDATE ink_tracking SET black_pages = black_pages + ?, color_pages = color_pages + ? WHERE id = 1",
+                (pages, pages),
+            )
+        else:
+            conn.execute(
+                "UPDATE ink_tracking SET black_pages = black_pages + ? WHERE id = 1",
+                (pages,),
+            )
+        conn.commit()
+
+
+def reset_ink() -> None:
+    with _conn() as conn:
+        conn.execute(
+            "UPDATE ink_tracking SET black_pages = 0, color_pages = 0, reset_at = datetime('now') WHERE id = 1"
+        )
+        conn.commit()
+
+
+def get_ink_estimate() -> dict:
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT black_pages, color_pages, reset_at FROM ink_tracking WHERE id = 1"
+        ).fetchone()
+    black_pages, color_pages, reset_at = row
+    return {
+        "black_pages": black_pages,
+        "color_pages": color_pages,
+        "reset_at": reset_at,
+        "black_pct": max(0, round(100 - (black_pages / BLACK_YIELD_PAGES * 100))),
+        "color_pct": max(0, round(100 - (color_pages / COLOR_YIELD_PAGES * 100))),
+    }

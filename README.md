@@ -84,7 +84,15 @@ Cada botón actualiza el mensaje en tiempo real. Al confirmar, el bot imprime y 
 | Páginas | Todas / Impares / Pares / rango custom (via caption) |
 
 ### `/status`
-Muestra el estado actual de la impresora (via `lpstat -l -p`, forma larga: incluye reasons como papel afuera, tapa abierta u offline) y la cantidad de trabajos en cola. Si el driver expone niveles de tinta, los incluye — **la Brother DCP-T300 no lo hace** (driver LPR clásico de Brother para impresoras de tanque de tinta, no reporta nivel a CUPS en Linux), así que esa sección no aparece.
+Muestra el estado actual de la impresora (via `lpstat -l -p`, forma larga: incluye reasons como papel afuera, tapa abierta u offline) y la cantidad de trabajos en cola. Si el driver expone niveles de tinta reales, los incluye; si no (caso de la Brother DCP-T300, ver `/tinta` abajo), muestra la estimación por páginas.
+
+### `/tinta`
+La DCP-T300 no reporta nivel de tinta/tanque a CUPS (limitación del driver Brother, no del bot). En su lugar, el bot **estima** el nivel contando páginas impresas desde el último rellenado y comparándolas contra el rendimiento declarado por Brother para sus botellas (`BLACK_YIELD_PAGES`/`COLOR_YIELD_PAGES` en `storage.py`, ~6.000 y ~5.000 páginas respectivamente, según ISO/IEC 24711). Negro se descuenta en todos los trabajos; color solo si el trabajo se imprimió a color.
+
+- `/tinta` — muestra el % estimado restante de negro y color, y la fecha del último reset.
+- `/tinta reset` — reinicia el contador a 0. Usalo cuando rellenes físicamente el tanque.
+
+Es una estimación, no una lectura real — sirve como aviso aproximado, no como medidor preciso.
 
 ### `/queue`
 Lista los trabajos de impresión en cola con su ID de trabajo.
@@ -152,7 +160,7 @@ Usuarios sin nombre configurado reciben mensajes genéricos equivalentes.
 | `detail` | Detalle adicional |
 | `logged_at` | Fecha y hora |
 
-Eventos registrados: `file_received`, `file_stored`, `print_ok`, `print_error`, `unauthorized`, `invalid_ext`, `cancel_job`, `cancel_all`, `config_changed`.
+Eventos registrados: `file_received`, `file_stored`, `print_ok`, `print_error`, `unauthorized`, `invalid_ext`, `cancel_job`, `cancel_all`, `config_changed`, `ink_reset`.
 
 **Tabla `print_config`** — configuración predeterminada por usuario:
 
@@ -162,6 +170,14 @@ Eventos registrados: `file_received`, `file_stored`, `print_ok`, `print_error`, 
 | `media` | A4 |
 | `sides` | one-sided |
 | `color` | color |
+
+**Tabla `ink_tracking`** — una sola fila (el tanque es físico y compartido por todos los usuarios), contador de páginas desde el último rellenado:
+
+| Campo | Descripción |
+|---|---|
+| `black_pages` | Páginas impresas (todas) desde el último reset |
+| `color_pages` | Páginas impresas a color desde el último reset |
+| `reset_at` | Fecha del último `/tinta reset` |
 
 ### Persistencia de archivos (opcional)
 
@@ -222,15 +238,16 @@ remote-printer/
 │   ├── bot.py                  # entry point, registro de handlers
 │   ├── config.py               # variables de entorno y helpers
 │   ├── cups.py                 # capa de abstracción sobre CUPS (lp, lpstat, cancel)
-│   ├── storage.py              # SQLite: historial, logs, config de impresión
+│   ├── pages.py                # conteo de páginas de un PDF y resolución de rangos (all/odd/even/custom)
+│   ├── storage.py              # SQLite: historial, logs, config de impresión, tracking de tinta estimado
 │   └── handlers/
 │       ├── print.py            # recepción de archivos y menú interactivo
-│       ├── queue.py            # /status, /queue, /cancel, /history
+│       ├── queue.py            # /status, /queue, /cancel, /history, /tinta
 │       ├── config.py           # /config interactivo
 │       ├── help.py             # /start, /help
 │       ├── callbacks.py        # manejo de botones inline
 │       ├── keyboards.py        # constructores de teclados y textos
-│       └── common.py           # helpers compartidos (reply_unauthorized, format_status_message)
+│       └── common.py           # helpers compartidos (reply_unauthorized, format_status_message, format_ink_message)
 └── scripts/
     ├── add-users.sh
     ├── remove-user.sh

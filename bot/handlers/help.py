@@ -11,7 +11,9 @@ HELP_AUTHORIZED = (
     "/cancel &lt;id&gt; — cancelar un trabajo específico\n"
     "/history — últimas 10 impresiones\n"
     "/config — ver configuración de impresión\n"
-    "/config &lt;param&gt; &lt;valor&gt; — cambiar un parámetro\n\n"
+    "/config &lt;param&gt; &lt;valor&gt; — cambiar un parámetro\n"
+    "/tinta — nivel de tinta estimado\n"
+    "/tinta reset — reiniciar el contador al rellenar el tanque\n\n"
     "Para imprimir, enviá un archivo PDF, JPG, PNG o TXT."
 )
 

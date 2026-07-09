@@ -4,7 +4,8 @@ from telegram import InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 from config import PRINTER, FILES_DIR, PERSIST_FILES, is_allowed, get_user_name
 from cups import print_file, get_queue, cancel_all
-from storage import log_print, log_event, get_print_config, set_print_config, get_history
+from storage import log_print, log_event, get_print_config, set_print_config, get_history, record_ink_usage
+from pages import count_pages, resolve_printed_pages
 from handlers.common import format_status_message
 from handlers.keyboards import (
     job_keyboard, config_keyboard, job_text, config_text,
@@ -102,6 +103,11 @@ async def _do_print(query, context, pending: dict, cfg: dict, user_id: int):
     try:
         print_file(PRINTER, path, cfg)
         log_print(user_id, filename, "ok", stored_path)
+        try:
+            printed_pages = resolve_printed_pages(count_pages(path), cfg.get("pages", "all")) * cfg["copies"]
+            record_ink_usage(printed_pages, cfg["color"] == "color")
+        except Exception:
+            pass
         msg = f"✅ ¡En camino, <b>{name}</b>! Se está imprimiendo <b>{filename}</b>." if name \
             else f"✅ Imprimiendo: <b>{filename}</b>."
         await query.edit_message_text(msg, parse_mode="HTML")

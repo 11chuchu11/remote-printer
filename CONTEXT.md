@@ -163,8 +163,22 @@ docker compose logs print-bot  # confirmar "Application started"
 - Firewall (`ufw`) restringiendo el 631 a la red local.
 - ~~Feedback de estado de trabajos de impresión vía el bot~~ — hecho:
   `/status` ahora muestra cantidad de trabajos en cola y reasons de CUPS
-  (ver punto 8 de "Problemas ya resueltos"). Feedback de **tinta/tanque**
-  sigue sin poder hacerse — limitación del driver Brother, no de código.
+  (ver punto 8 de "Problemas ya resueltos").
+- ~~Feedback de tinta/tanque~~ — hecho, pero **estimado, no real**: el driver
+  Brother sigue sin exponer el nivel real a CUPS (ver punto 8), así que se
+  agregó `/tinta` que estima el % restante contando páginas impresas desde
+  el último `/tinta reset` contra el rendimiento declarado por Brother
+  (`BLACK_YIELD_PAGES`/`COLOR_YIELD_PAGES` en `bot/storage.py`). Se evaluó
+  la alternativa de reversear el protocolo USB propietario que usa el
+  Status Monitor de Brother para leer el nivel real — técnicamente posible
+  (requiere Wireshark + USBPcap contra una máquina Windows con el Status
+  Monitor oficial, aislar los paquetes de query/respuesta del nivel de
+  tinta, y replicarlos con `pyusb` desde el contenedor `cups`, que ya corre
+  privileged con acceso a `/dev/bus/usb`) pero se descartó por ahora: no
+  hay garantía de que el T300 (el modelo más económico de la línea tanque,
+  sin pantalla ni LEDs de nivel) exponga algo más granular que un estado
+  binario "OK/bajo", lo que haría el esfuerzo de reversing equivalente al
+  resultado que ya da la estimación por páginas.
 - Soporte para escaneo remoto (devolver el PDF escaneado por Telegram),
   usando el driver `brscan4` que ya está instalado pero sin explotar.
 - Notificación proactiva al bot cuando se traba el papel (push, no polleado
