@@ -23,7 +23,7 @@ def print_file(printer: str, path: str, config: dict | None = None) -> None:
 
 
 def get_status(printer: str) -> str:
-    r = subprocess.run(["lpstat", "-p", printer], capture_output=True, text=True, timeout=10)
+    r = subprocess.run(["lpstat", "-l", "-p", printer], capture_output=True, text=True, timeout=10)
     return r.stdout.strip() or r.stderr.strip() or "Sin respuesta de CUPS."
 
 

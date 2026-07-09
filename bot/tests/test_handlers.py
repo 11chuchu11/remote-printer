@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import handlers.print as print_handler
 import handlers.queue as queue_handler
 import handlers.callbacks as callbacks_handler
+import handlers.common as common_handler
 import handlers.help as help_handler
 import handlers.config as config_handler
 
@@ -339,8 +340,9 @@ class TestMenuCallbacks:
         update = MagicMock()
         update.callback_query = query
         with patch.object(callbacks_handler, "is_allowed", return_value=True), \
-             patch.object(callbacks_handler, "get_status", return_value="idle"), \
-             patch.object(callbacks_handler, "get_ink", return_value="Marker: 45"):
+             patch.object(common_handler, "get_status", return_value="idle"), \
+             patch.object(common_handler, "get_queue", return_value=[]), \
+             patch.object(common_handler, "get_ink", return_value="Marker: 45"):
             await callbacks_handler.handle_callback(update, ctx)
         msg = query.edit_message_text.call_args[0][0]
         assert "idle" in msg
@@ -436,12 +438,14 @@ class TestQueueHandlers:
         update = make_update()
         ctx = make_context()
         with patch.object(queue_handler, "is_allowed", return_value=True), \
-             patch.object(queue_handler, "get_status", return_value="idle"), \
-             patch.object(queue_handler, "get_ink", return_value="Marker: 45"):
+             patch.object(common_handler, "get_status", return_value="idle"), \
+             patch.object(common_handler, "get_queue", return_value=["DCPT300-1 alice"]), \
+             patch.object(common_handler, "get_ink", return_value="Marker: 45"):
             await queue_handler.handle_status(update, ctx)
         msg = update.message.reply_text.call_args[0][0]
         assert "idle" in msg
         assert "45" in msg
+        assert "1" in msg
 
     async def test_cancel_no_args_cancels_all(self, make_update, make_context):
         update = make_update()

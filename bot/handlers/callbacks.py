@@ -3,8 +3,9 @@ import shutil
 from telegram import InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 from config import PRINTER, FILES_DIR, PERSIST_FILES, is_allowed, get_user_name
-from cups import print_file, get_status, get_ink, get_queue, cancel_all
+from cups import print_file, get_queue, cancel_all
 from storage import log_print, log_event, get_print_config, set_print_config, get_history
+from handlers.common import format_status_message
 from handlers.keyboards import (
     job_keyboard, config_keyboard, job_text, config_text,
     menu_keyboard, menu_text,
@@ -157,11 +158,7 @@ async def _menu_callback(query, action: str, user_id: int):
     back = InlineKeyboardMarkup(BACK_BTN)
 
     if action == "status":
-        status = get_status(PRINTER)
-        ink = get_ink(PRINTER)
-        msg = f"<b>Estado:</b>\n<code>{status}</code>"
-        if ink:
-            msg += f"\n\n<b>Tinta:</b>\n<code>{ink}</code>"
+        msg = format_status_message(PRINTER)
         await query.edit_message_text(msg, reply_markup=back, parse_mode="HTML")
 
     elif action == "queue":

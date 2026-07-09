@@ -1,9 +1,9 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 from config import PRINTER, is_allowed
-from cups import get_status, get_ink, get_queue, cancel_job, cancel_all
+from cups import get_queue, cancel_job, cancel_all
 from storage import get_history, log_event
-from handlers.common import reply_unauthorized
+from handlers.common import reply_unauthorized, format_status_message
 
 
 async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -11,13 +11,7 @@ async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await reply_unauthorized(update)
         return
 
-    status = get_status(PRINTER)
-    ink = get_ink(PRINTER)
-
-    msg = f"<b>Estado:</b>\n<code>{status}</code>"
-    if ink:
-        msg += f"\n\n<b>Tinta:</b>\n<code>{ink}</code>"
-
+    msg = format_status_message(PRINTER)
     await update.message.reply_text(msg, parse_mode="HTML")
 
 

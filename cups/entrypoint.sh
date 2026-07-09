@@ -15,7 +15,8 @@ cupsctl --remote-admin --remote-any --share-printers
 if ! lpstat -p DCPT300 >/dev/null 2>&1; then
     URI=$(lpinfo -v | grep -i "usb.*brother" | awk '{print $2}')
     if [ -n "$URI" ]; then
-        lpadmin -p DCPT300 -E -v "$URI" -P /usr/share/cups/model/Brother/brother_dcpt300_printer_en.ppd
+        lpadmin -p DCPT300 -E -v "$URI" -P /usr/share/cups/model/Brother/brother_dcpt300_printer_en.ppd \
+            -D "Brother DCP-T300" -L "Red local"
         lpadmin -d DCPT300
         cupsenable DCPT300
         cupsaccept DCPT300

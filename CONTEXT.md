@@ -85,6 +85,27 @@ Dos contenedores Docker, orquestados con `docker compose`:
   `usermod -aG docker franco`, hace falta cerrar sesión y volver a entrar
   (o `newgrp docker`) para que el cambio de grupo tome efecto.
 
+8. **`/status` del bot solo decía "idle" y nada más**: `cups.py` usaba
+  `lpstat -p` (forma corta), que en CUPS solo devuelve una línea de estado
+  y descarta `printer-state-reasons` (papel afuera, tapa abierta, offline)
+  y `Location`/`Description`. Se cambió a `lpstat -l -p` (forma larga) para
+  traer esos datos. **Nivel de tinta/tanque no se puede resolver de la misma
+  forma**: el driver `dcpt300lpr`/`dcpt300cupswrapper` (driver LPR clásico
+  de Brother para la línea de tanque de tinta) nunca completa
+  `marker-levels`/`marker-types` en CUPS — Brother no expone ese dato a
+  Linux para estas impresoras (solo su Status Monitor propietario de
+  Windows hace algo parecido, y ni ahí es por sensor). Si `/status` no
+  muestra tinta, no es un bug — no hay forma de obtenerla sin escribir un
+  poller que hable el protocolo USB propietario de Brother.
+
+9. **`lpadmin` en `entrypoint.sh` no seteaba `Location`/`Description`**: por
+  eso ambos quedaban vacíos incluso pidiendo la forma larga de `lpstat`. Se
+  agregó `-D "Brother DCP-T300" -L "Red local"` a la línea de `lpadmin`. Si
+  se recrea la impresora en CUPS (o se borra el volumen de config de CUPS),
+  estos valores se vuelven a setear solos; si la impresora ya existe de una
+  corrida anterior, el bloque `if ! lpstat -p DCPT300` no se re-ejecuta y
+  hay que actualizarlos a mano con `lpadmin -p DCPT300 -D "..." -L "..."`.
+
 ## Seguridad — decisiones tomadas
 
 - El bot de Telegram usa **long polling**, no webhook — esto significa que
@@ -140,8 +161,12 @@ docker compose logs print-bot  # confirmar "Application started"
 ## Pendientes / ideas para seguir extendiendo
 
 - Firewall (`ufw`) restringiendo el 631 a la red local.
-- Feedback de estado de tinta o de trabajos de impresión vía el bot.
+- ~~Feedback de estado de trabajos de impresión vía el bot~~ — hecho:
+  `/status` ahora muestra cantidad de trabajos en cola y reasons de CUPS
+  (ver punto 8 de "Problemas ya resueltos"). Feedback de **tinta/tanque**
+  sigue sin poder hacerse — limitación del driver Brother, no de código.
 - Soporte para escaneo remoto (devolver el PDF escaneado por Telegram),
   usando el driver `brscan4` que ya está instalado pero sin explotar.
-- Notificación al bot cuando se traba el papel o falta tinta (leyendo el
-  estado de CUPS/IPP periódicamente).
+- Notificación proactiva al bot cuando se traba el papel (push, no polleado
+  por el usuario) — el dato de `printer-state-reasons` ya está disponible
+  desde `/status`, falta un poller periódico que dispare un mensaje solo.

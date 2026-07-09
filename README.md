@@ -84,7 +84,7 @@ Cada botón actualiza el mensaje en tiempo real. Al confirmar, el bot imprime y 
 | Páginas | Todas / Impares / Pares / rango custom (via caption) |
 
 ### `/status`
-Muestra el estado actual de la impresora (via `lpstat -p`). Si el driver expone niveles de tinta, los incluye.
+Muestra el estado actual de la impresora (via `lpstat -l -p`, forma larga: incluye reasons como papel afuera, tapa abierta u offline) y la cantidad de trabajos en cola. Si el driver expone niveles de tinta, los incluye — **la Brother DCP-T300 no lo hace** (driver LPR clásico de Brother para impresoras de tanque de tinta, no reporta nivel a CUPS en Linux), así que esa sección no aparece.
 
 ### `/queue`
 Lista los trabajos de impresión en cola con su ID de trabajo.
@@ -230,7 +230,7 @@ remote-printer/
 │       ├── help.py             # /start, /help
 │       ├── callbacks.py        # manejo de botones inline
 │       ├── keyboards.py        # constructores de teclados y textos
-│       └── common.py           # helpers compartidos (reply_unauthorized)
+│       └── common.py           # helpers compartidos (reply_unauthorized, format_status_message)
 └── scripts/
     ├── add-users.sh
     ├── remove-user.sh

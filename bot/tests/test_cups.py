@@ -96,6 +96,56 @@ class TestGetQueue:
         assert len(result) == 2
 
 
+class TestGetStatus:
+    def test_uses_long_form_for_reasons_and_location(self):
+        with patch("cups.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="DCPT300 is idle.", stderr="")
+            cups.get_status("DCPT300")
+            args = _called_args(mock_run)
+        assert args == ["lpstat", "-l", "-p", "DCPT300"]
+
+    def test_returns_stdout_when_present(self):
+        with patch("cups.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="DCPT300 is idle.", stderr="")
+            result = cups.get_status("DCPT300")
+        assert result == "DCPT300 is idle."
+
+    def test_falls_back_to_stderr(self):
+        with patch("cups.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="", stderr="lpstat: Invalid destination")
+            result = cups.get_status("DCPT300")
+        assert result == "lpstat: Invalid destination"
+
+    def test_falls_back_to_default_message(self):
+        with patch("cups.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="", stderr="")
+            result = cups.get_status("DCPT300")
+        assert result == "Sin respuesta de CUPS."
+
+
+class TestGetInk:
+    def test_extracts_marker_lines(self):
+        output = "printer DCPT300 is idle\nMarkerLevels: 45\n"
+        with patch("cups.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout=output)
+            result = cups.get_ink("DCPT300")
+        assert "MarkerLevels: 45" in result
+
+    def test_returns_empty_when_no_marker_info(self):
+        with patch("cups.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="printer DCPT300 is idle\n")
+            result = cups.get_ink("DCPT300")
+        assert result == ""
+
+
+class TestCancelJob:
+    def test_calls_cancel_with_job_id(self):
+        with patch("cups.subprocess.run") as mock_run:
+            cups.cancel_job("DCPT300-5")
+            args = _called_args(mock_run)
+        assert args == ["cancel", "DCPT300-5"]
+
+
 class TestCancelAll:
     def test_returns_zero_when_queue_empty(self):
         with patch("cups.get_queue", return_value=[]):
